@@ -4,7 +4,7 @@ from collections.abc import AsyncGenerator
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.db.engine import async_session_factory
+from app.db import engine as _engine
 
 
 async def get_db_session() -> AsyncGenerator[AsyncSession, None]:
@@ -15,11 +15,11 @@ async def get_db_session() -> AsyncGenerator[AsyncSession, None]:
     Raises:
         RuntimeError: If the session factory has not been initialized.
     """
-    if async_session_factory is None:
+    if _engine.async_session_factory is None:
         msg = "Database session factory not initialized. Call init_engine() first."
         raise RuntimeError(msg)
 
-    async with async_session_factory() as session:
+    async with _engine.async_session_factory() as session:
         try:
             yield session
             await session.commit()

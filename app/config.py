@@ -21,6 +21,8 @@ class Settings(BaseSettings):
 
     # Phase 2: Ingestion pipeline settings
     github_webhook_secret: str = "dev-secret"
+    # Phase 3: Retrieval + Chat settings
+    gemini_model: str = "gemini-2.5-flash-lite"
     github_token: str = ""
     gcp_project: str = ""
     gcp_location: str = "us-central1"

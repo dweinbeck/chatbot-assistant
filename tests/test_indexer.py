@@ -15,6 +15,7 @@ from app.services.indexer import delete_file, index_file
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _mock_session(existing_file=None):
     """Build a mock AsyncSession.
 
@@ -48,15 +49,23 @@ def _make_kb_file(*, file_id=1, repo_id=1, path="src/main.py", commit_sha="aaa",
 
 
 @pytest.mark.anyio
+@patch("app.services.indexer.get_or_create_repo", new_callable=AsyncMock)
 @patch("app.services.indexer.fetch_file_content", new_callable=AsyncMock)
 @patch("app.services.indexer.is_denied", return_value=True)
-async def test_index_file_denylist_skip(mock_denied, mock_fetch):
+async def test_index_file_denylist_skip(mock_denied, mock_fetch, mock_repo):
     """Path matching denylist returns skipped status without GitHub API call."""
     session = _mock_session()
     client = AsyncMock()
 
     result = await index_file(
-        session, client, "owner", "repo", 1, "node_modules/foo.js", "sha1", "tok",
+        session,
+        client,
+        "owner",
+        "repo",
+        1,
+        "node_modules/foo.js",
+        "sha1",
+        "tok",
     )
 
     assert result == {"status": "skipped", "reason": "denylist"}
@@ -65,10 +74,11 @@ async def test_index_file_denylist_skip(mock_denied, mock_fetch):
 
 
 @pytest.mark.anyio
+@patch("app.services.indexer.get_or_create_repo", new_callable=AsyncMock)
 @patch("app.services.indexer.chunk_file")
 @patch("app.services.indexer.fetch_file_content", new_callable=AsyncMock, return_value=None)
 @patch("app.services.indexer.is_denied", return_value=False)
-async def test_index_file_not_found(mock_denied, mock_fetch, mock_chunk):
+async def test_index_file_not_found(mock_denied, mock_fetch, mock_chunk, mock_repo):
     """GitHub returning None (404) results in skipped/not_found status."""
     session = _mock_session()
     client = AsyncMock()
@@ -80,6 +90,7 @@ async def test_index_file_not_found(mock_denied, mock_fetch, mock_chunk):
 
 
 @pytest.mark.anyio
+@patch("app.services.indexer.get_or_create_repo", new_callable=AsyncMock)
 @patch("app.services.indexer.chunk_file", return_value=[(1, 10, "chunk content")])
 @patch(
     "app.services.indexer.fetch_file_content",
@@ -87,7 +98,7 @@ async def test_index_file_not_found(mock_denied, mock_fetch, mock_chunk):
     return_value="print('hello')",
 )
 @patch("app.services.indexer.is_denied", return_value=False)
-async def test_index_file_new_file(mock_denied, mock_fetch, mock_chunk):
+async def test_index_file_new_file(mock_denied, mock_fetch, mock_chunk, mock_repo):
     """Happy path: new file is fetched, chunked, and KBFile + KBChunks created."""
     session = _mock_session(existing_file=None)
     client = AsyncMock()
@@ -102,10 +113,11 @@ async def test_index_file_new_file(mock_denied, mock_fetch, mock_chunk):
 
 
 @pytest.mark.anyio
+@patch("app.services.indexer.get_or_create_repo", new_callable=AsyncMock)
 @patch("app.services.indexer.chunk_file")
 @patch("app.services.indexer.fetch_file_content", new_callable=AsyncMock)
 @patch("app.services.indexer.is_denied", return_value=False)
-async def test_index_file_unchanged(mock_denied, mock_fetch, mock_chunk):
+async def test_index_file_unchanged(mock_denied, mock_fetch, mock_chunk, mock_repo):
     """Existing file with same sha256 returns unchanged and skips chunking."""
     content = "print('hello')"
     mock_fetch.return_value = content
@@ -126,6 +138,7 @@ async def test_index_file_unchanged(mock_denied, mock_fetch, mock_chunk):
 
 
 @pytest.mark.anyio
+@patch("app.services.indexer.get_or_create_repo", new_callable=AsyncMock)
 @patch("app.services.indexer.chunk_file", return_value=[(1, 5, "new chunk")])
 @patch(
     "app.services.indexer.fetch_file_content",
@@ -133,7 +146,7 @@ async def test_index_file_unchanged(mock_denied, mock_fetch, mock_chunk):
     return_value="updated content",
 )
 @patch("app.services.indexer.is_denied", return_value=False)
-async def test_index_file_updated(mock_denied, mock_fetch, mock_chunk):
+async def test_index_file_updated(mock_denied, mock_fetch, mock_chunk, mock_repo):
     """Existing file with different sha256: old chunks deleted, new chunks created."""
     existing = _make_kb_file(sha256="old_hash")
     session = _mock_session(existing_file=existing)

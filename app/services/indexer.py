@@ -15,6 +15,7 @@ from app.db.models import KBChunk, KBFile
 from app.services.chunker import chunk_file
 from app.services.denylist import is_denied
 from app.services.github_client import fetch_file_content
+from app.services.repo_manager import get_or_create_repo
 
 logger = structlog.get_logger()
 
@@ -56,6 +57,9 @@ async def index_file(
         - {"status": "unchanged"} if content hash matches existing record
         - {"status": "indexed", "chunks": N} on successful indexing
     """
+    # Step 0: Ensure Repo row exists (FK integrity)
+    await get_or_create_repo(session, repo_id, owner, repo)
+
     # Step 1: Check denylist by path pattern
     if is_denied(path):
         logger.debug("skipping_denied_path", path=path)
@@ -89,9 +93,7 @@ async def index_file(
             return {"status": "unchanged"}
 
         # Content changed -- delete old chunks and update file record
-        await session.execute(
-            delete(KBChunk).where(KBChunk.file_id == existing_file.id)
-        )
+        await session.execute(delete(KBChunk).where(KBChunk.file_id == existing_file.id))
         existing_file.sha256 = content_hash
         existing_file.commit_sha = commit_sha
         kb_file = existing_file
@@ -148,9 +150,7 @@ async def delete_file(session: AsyncSession, repo_id: int, path: str) -> dict:
         return {"status": "not_found"}
 
     # Delete chunks first, then the file
-    await session.execute(
-        delete(KBChunk).where(KBChunk.file_id == existing_file.id)
-    )
+    await session.execute(delete(KBChunk).where(KBChunk.file_id == existing_file.id))
     await session.delete(existing_file)
 
     logger.info("file_deleted", path=path, repo_id=repo_id)

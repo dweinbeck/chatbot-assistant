@@ -1,9 +1,13 @@
-"""Tests for the GitHub file content client."""
+"""Tests for the GitHub API client functions."""
 
 import httpx
 import pytest
 
-from app.services.github_client import fetch_file_content
+from app.services.github_client import (
+    fetch_file_content,
+    get_repo_metadata,
+    list_repo_files,
+)
 
 
 @pytest.mark.asyncio
@@ -70,8 +74,79 @@ async def test_fetch_file_content_raises_on_server_error() -> None:
 
     async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
         with pytest.raises(httpx.HTTPStatusError) as exc_info:
-            await fetch_file_content(
-                client, "owner", "repo", "file.py", "abc123", "ghp_token"
-            )
+            await fetch_file_content(client, "owner", "repo", "file.py", "abc123", "ghp_token")
 
     assert exc_info.value.response.status_code == 500
+
+
+# ---------------------------------------------------------------------------
+# get_repo_metadata tests
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_get_repo_metadata_returns_json() -> None:
+    """A 200 response returns the parsed JSON dict."""
+    meta = {"id": 42, "default_branch": "main", "full_name": "owner/repo"}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, json=meta)
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+        result = await get_repo_metadata(client, "owner", "repo", "ghp_token")
+
+    assert result["id"] == 42
+    assert result["default_branch"] == "main"
+
+
+@pytest.mark.asyncio
+async def test_get_repo_metadata_raises_on_404() -> None:
+    """A 404 response raises httpx.HTTPStatusError."""
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(404, json={"message": "Not Found"})
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+        with pytest.raises(httpx.HTTPStatusError):
+            await get_repo_metadata(client, "owner", "nope", "ghp_token")
+
+
+# ---------------------------------------------------------------------------
+# list_repo_files tests
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_list_repo_files_returns_blob_paths() -> None:
+    """Only blob entries are returned, tree entries are filtered out."""
+    tree_data = {
+        "sha": "abc123",
+        "tree": [
+            {"path": "src", "type": "tree"},
+            {"path": "src/main.py", "type": "blob"},
+            {"path": "README.md", "type": "blob"},
+            {"path": "tests", "type": "tree"},
+        ],
+    }
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        assert "recursive=1" in str(request.url)
+        return httpx.Response(200, json=tree_data)
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+        result = await list_repo_files(client, "owner", "repo", "main", "ghp_token")
+
+    assert result == ["src/main.py", "README.md"]
+
+
+@pytest.mark.asyncio
+async def test_list_repo_files_empty_tree() -> None:
+    """An empty tree returns an empty list."""
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, json={"sha": "abc", "tree": []})
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+        result = await list_repo_files(client, "owner", "repo", "main", "ghp_token")
+
+    assert result == []

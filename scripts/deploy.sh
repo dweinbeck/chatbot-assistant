@@ -60,7 +60,7 @@ gcloud run deploy "${SERVICE}" \
   --service-account="${SERVICE_ACCOUNT}" \
   --add-cloudsql-instances="${CLOUD_SQL_INSTANCE}" \
   --set-secrets="DATABASE_URL=database-url:latest,GITHUB_WEBHOOK_SECRET=github-webhook-secret:latest,GITHUB_TOKEN=github-token:latest" \
-  --set-env-vars="GCP_PROJECT=${PROJECT_ID},GCP_LOCATION=${REGION},CLOUD_TASKS_QUEUE=indexing,GEMINI_MODEL=gemini-2.5-flash-lite,TASK_HANDLER_BASE_URL=${TASK_HANDLER_BASE_URL}" \
+  --set-env-vars="GCP_PROJECT=${PROJECT_ID},GCP_LOCATION=${REGION},CLOUD_TASKS_QUEUE=indexing,GEMINI_MODEL=gemini-2.5-flash-lite,TASK_HANDLER_BASE_URL=${TASK_HANDLER_BASE_URL},CORS_ORIGINS=https://dan-weinbeck.com" \
   --allow-unauthenticated \
   --project="${PROJECT_ID}"
 

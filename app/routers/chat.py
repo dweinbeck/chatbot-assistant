@@ -8,14 +8,12 @@ only (chunk count + ts_rank_cd scores), never LLM self-assessment.
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING, Annotated
+from typing import Annotated
 
 from fastapi import APIRouter, Depends
+from sqlalchemy.ext.asyncio import AsyncSession  # noqa: TC002
 
 from app.db.session import get_db_session
-
-if TYPE_CHECKING:
-    from sqlalchemy.ext.asyncio import AsyncSession
 from app.dependencies import get_gemini_client
 from app.schemas.chat import (
     ChatRequest,

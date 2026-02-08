@@ -8,8 +8,9 @@ from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.session import get_db_session
-from app.dependencies import get_task_queue
+from app.dependencies import get_gemini_client, get_task_queue
 from app.main import app
+from app.services.gemini_client import InMemoryLLMClient
 from app.services.task_queue import InMemoryTaskQueue
 
 
@@ -31,14 +32,22 @@ def mock_task_queue() -> InMemoryTaskQueue:
 
 
 @pytest.fixture
+def mock_gemini_client() -> InMemoryLLMClient:
+    """Create a fresh in-memory LLM client for test inspection."""
+    return InMemoryLLMClient()
+
+
+@pytest.fixture
 async def client(
     mock_db_session: AsyncMock,
     mock_task_queue: InMemoryTaskQueue,
+    mock_gemini_client: InMemoryLLMClient,
 ) -> AsyncGenerator[AsyncClient, None]:
     """Yield an httpx AsyncClient with dependencies overridden.
 
     Uses the mock session so tests don't require a running database,
-    and an in-memory task queue for inspecting enqueued tasks.
+    an in-memory task queue for inspecting enqueued tasks, and an
+    in-memory LLM client for controlling chat responses.
     """
 
     async def _override_db_session() -> AsyncGenerator[AsyncSession, None]:
@@ -46,6 +55,7 @@ async def client(
 
     app.dependency_overrides[get_db_session] = _override_db_session
     app.dependency_overrides[get_task_queue] = lambda: mock_task_queue
+    app.dependency_overrides[get_gemini_client] = lambda: mock_gemini_client
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
         yield ac

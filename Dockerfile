@@ -35,10 +35,11 @@ COPY --from=builder /app/.venv /app/.venv
 COPY --from=builder /app/app ./app
 COPY --from=builder /app/migrations ./migrations
 COPY --from=builder /app/alembic.ini ./
+COPY scripts/start.sh ./scripts/start.sh
 
 # Add venv to PATH
 ENV PATH="/app/.venv/bin:$PATH"
 
 EXPOSE 8080
 
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8080"]
+CMD ["bash", "scripts/start.sh"]

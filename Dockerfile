@@ -9,8 +9,7 @@ WORKDIR /app
 
 # Install dependencies first (layer caching)
 COPY pyproject.toml uv.lock ./
-RUN --mount=type=cache,target=/root/.cache/uv \
-    uv sync --frozen --no-dev --no-install-project
+RUN uv sync --frozen --no-dev --no-install-project
 
 # Copy application code
 COPY app/ ./app/
@@ -18,8 +17,7 @@ COPY migrations/ ./migrations/
 COPY alembic.ini ./
 
 # Sync again to install the project itself
-RUN --mount=type=cache,target=/root/.cache/uv \
-    uv sync --frozen --no-dev
+RUN uv sync --frozen --no-dev
 
 # --- Runtime stage ---
 FROM python:3.12-slim

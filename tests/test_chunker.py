@@ -1,7 +1,5 @@
 """Tests for the content chunking engine (markdown + code)."""
 
-import pytest
-
 from app.services.chunker import chunk_code, chunk_file, chunk_markdown
 
 
@@ -115,7 +113,7 @@ class TestChunkCode:
         chunks = chunk_code(content, ".xyz", min_lines=200, max_lines=400)
         assert len(chunks) >= 2
         # Each chunk should be at most max_lines
-        for start, end, text in chunks:
+        for start, end, _text in chunks:
             assert end - start + 1 <= 400
 
     def test_no_boundaries_fallback(self) -> None:
@@ -123,7 +121,7 @@ class TestChunkCode:
         content = "\n".join(f"# comment line {i}" for i in range(1, 901))
         chunks = chunk_code(content, ".py", min_lines=200, max_lines=400)
         assert len(chunks) >= 2
-        for start, end, text in chunks:
+        for start, end, _text in chunks:
             assert end - start + 1 <= 400
 
     def test_line_numbers_one_indexed(self) -> None:
@@ -195,7 +193,7 @@ class TestChunkCode:
         # Total: 550 lines. After merge: should be 2 chunks (300 + 250 or similar)
         assert len(chunks) >= 2
         # No chunk should be less than min_lines except possibly the last one
-        for _start, end, _text in chunks[:-1]:
+        for _start, _end, _text in chunks[:-1]:
             # Non-last chunks should be at least min_lines
             pass
         # All chunks should be at most max_lines

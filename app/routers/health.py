@@ -14,8 +14,8 @@ router = APIRouter()
 DBSession = Annotated[AsyncSession, Depends(get_db_session)]
 
 
-@router.get("/healthz", response_model=HealthResponse)
-async def healthz(db: DBSession) -> HealthResponse:
+@router.get("/health", response_model=HealthResponse)
+async def health(db: DBSession) -> HealthResponse:
     """Check application health and database connectivity.
 
     Executes a simple SELECT 1 query to verify the database is reachable.

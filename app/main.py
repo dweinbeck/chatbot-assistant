@@ -7,7 +7,7 @@ from fastapi import FastAPI
 
 from app.config import settings
 from app.db.engine import dispose_engine, init_engine
-from app.routers import health, webhooks
+from app.routers import health, tasks, webhooks
 
 
 @asynccontextmanager
@@ -21,3 +21,4 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
 app = FastAPI(title=settings.app_name, lifespan=lifespan)
 app.include_router(health.router)
 app.include_router(webhooks.router)
+app.include_router(tasks.router)

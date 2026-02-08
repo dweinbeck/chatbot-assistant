@@ -2,11 +2,18 @@
 
 import hashlib
 import hmac
+import logging
+from typing import Annotated
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Request, status
 
 from app.config import settings
+from app.dependencies import get_task_queue
+from app.schemas.tasks import DeleteFilePayload, IndexFilePayload
 from app.schemas.webhooks import PushWebhookPayload
+from app.services.task_queue import TaskQueue
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/webhooks", tags=["webhooks"])
 
@@ -43,12 +50,56 @@ async def verify_github_signature(
 @router.post("/github", status_code=status.HTTP_202_ACCEPTED)
 async def github_webhook(
     raw_body: bytes = Depends(verify_github_signature),
+    task_queue: Annotated[TaskQueue, Depends(get_task_queue)] = None,  # type: ignore[assignment]
 ) -> dict:
     """Receive a GitHub push webhook event.
 
-    The signature dependency has already verified authenticity and provided
-    the raw body bytes. This endpoint parses the payload and acknowledges
-    receipt. Task enqueuing will be wired in plan 02-04.
+    Parses the payload and enqueues index/delete tasks for each file
+    mentioned in the push commits.
     """
     payload = PushWebhookPayload.model_validate_json(raw_body)
-    return {"status": "accepted", "commits": len(payload.commits)}
+    base_url = settings.task_handler_base_url
+    repo = payload.repository
+    repo_owner = repo.owner.login or repo.owner.name or ""
+    repo_name = repo.name
+    repo_id = repo.id
+    commit_sha = payload.after
+
+    tasks_enqueued = 0
+
+    for commit in payload.commits:
+        # Enqueue index tasks for added and modified files
+        for path in commit.added + commit.modified:
+            index_payload = IndexFilePayload(
+                repo_owner=repo_owner,
+                repo_name=repo_name,
+                repo_id=repo_id,
+                path=path,
+                commit_sha=commit_sha,
+            )
+            await task_queue.enqueue(
+                f"{base_url}/tasks/index-file",
+                index_payload.model_dump(),
+            )
+            tasks_enqueued += 1
+
+        # Enqueue delete tasks for removed files
+        for path in commit.removed:
+            delete_payload = DeleteFilePayload(
+                repo_owner=repo_owner,
+                repo_name=repo_name,
+                repo_id=repo_id,
+                path=path,
+            )
+            await task_queue.enqueue(
+                f"{base_url}/tasks/delete-file",
+                delete_payload.model_dump(),
+            )
+            tasks_enqueued += 1
+
+    logger.info(
+        "Webhook processed: %d commits, %d tasks enqueued",
+        len(payload.commits),
+        tasks_enqueued,
+    )
+    return {"status": "accepted", "tasks_enqueued": tasks_enqueued}

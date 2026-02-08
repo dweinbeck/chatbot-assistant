@@ -4,10 +4,10 @@ These endpoints are called by the task queue (Cloud Tasks or in-memory)
 to process individual file indexing and deletion operations.
 """
 
-import logging
 from typing import Annotated
 
 import httpx
+import structlog
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -16,7 +16,7 @@ from app.db.session import get_db_session
 from app.schemas.tasks import DeleteFilePayload, IndexFilePayload
 from app.services.indexer import delete_file, index_file
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger()
 
 router = APIRouter(prefix="/tasks", tags=["tasks"])
 
@@ -31,7 +31,7 @@ async def handle_index_file(
     Called by the task queue for each added or modified file in a push event.
     """
     try:
-        async with httpx.AsyncClient() as client:
+        async with httpx.AsyncClient(timeout=30.0) as client:
             result = await index_file(
                 session=session,
                 github_client=client,
@@ -43,7 +43,7 @@ async def handle_index_file(
                 token=settings.github_token,
             )
     except Exception:
-        logger.exception("Failed to index file: %s", payload.path)
+        logger.exception("index_file_failed", path=payload.path)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to index file: {payload.path}",
@@ -67,7 +67,7 @@ async def handle_delete_file(
             path=payload.path,
         )
     except Exception:
-        logger.exception("Failed to delete file: %s", payload.path)
+        logger.exception("delete_file_failed", path=payload.path)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to delete file: {payload.path}",

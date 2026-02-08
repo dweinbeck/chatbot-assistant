@@ -7,9 +7,9 @@ only (chunk count + ts_rank_cd scores), never LLM self-assessment.
 
 from __future__ import annotations
 
-import logging
 from typing import Annotated
 
+import structlog
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession  # noqa: TC002
 
@@ -25,7 +25,7 @@ from app.schemas.chat import (
 from app.services.gemini_client import SYSTEM_PROMPT, LLMClient
 from app.services.retrieval import RetrievedChunk, retrieve_chunks
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger()
 
 
 def compute_confidence(
@@ -138,7 +138,7 @@ async def chat(
         )
         llm_response = LLMResponse.model_validate_json(raw)
     except Exception:
-        logger.exception("LLM generation failed")
+        logger.exception("llm_generation_failed")
         return ChatResponse(
             answer=(
                 "I'm sorry, I encountered an error processing your question. "

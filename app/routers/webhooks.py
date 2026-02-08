@@ -2,9 +2,9 @@
 
 import hashlib
 import hmac
-import logging
 from typing import Annotated
 
+import structlog
 from fastapi import APIRouter, Depends, Header, HTTPException, Request, status
 
 from app.config import settings
@@ -13,7 +13,7 @@ from app.schemas.tasks import DeleteFilePayload, IndexFilePayload
 from app.schemas.webhooks import PushWebhookPayload
 from app.services.task_queue import TaskQueue
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger()
 
 router = APIRouter(prefix="/webhooks", tags=["webhooks"])
 
@@ -58,6 +58,11 @@ async def github_webhook(
     mentioned in the push commits.
     """
     payload = PushWebhookPayload.model_validate_json(raw_body)
+
+    if payload.deleted:
+        logger.info("webhook_skipped_deletion", ref=payload.ref)
+        return {"status": "accepted", "tasks_enqueued": 0}
+
     base_url = settings.task_handler_base_url
     repo = payload.repository
     repo_owner = repo.owner.login or repo.owner.name or ""
@@ -97,9 +102,5 @@ async def github_webhook(
             )
             tasks_enqueued += 1
 
-    logger.info(
-        "Webhook processed: %d commits, %d tasks enqueued",
-        len(payload.commits),
-        tasks_enqueued,
-    )
+    logger.info("webhook_processed", commits=len(payload.commits), tasks_enqueued=tasks_enqueued)
     return {"status": "accepted", "tasks_enqueued": tasks_enqueued}

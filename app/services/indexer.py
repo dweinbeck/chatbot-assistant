@@ -6,8 +6,8 @@ and updates to existing files, as well as file deletion.
 """
 
 import hashlib
-import logging
 
+import structlog
 from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -16,7 +16,7 @@ from app.services.chunker import chunk_file
 from app.services.denylist import is_denied
 from app.services.github_client import fetch_file_content
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger()
 
 
 async def index_file(
@@ -58,19 +58,19 @@ async def index_file(
     """
     # Step 1: Check denylist by path pattern
     if is_denied(path):
-        logger.debug("Skipping denied path: %s", path)
+        logger.debug("skipping_denied_path", path=path)
         return {"status": "skipped", "reason": "denylist"}
 
     # Step 2: Fetch content from GitHub
     content = await fetch_file_content(github_client, owner, repo, path, commit_sha, token)
     if content is None:
-        logger.debug("File not found on GitHub: %s@%s", path, commit_sha)
+        logger.debug("file_not_found", path=path, commit_sha=commit_sha)
         return {"status": "skipped", "reason": "not_found"}
 
     # Step 3: Check denylist by file size
     size_bytes = len(content.encode("utf-8"))
     if is_denied(path, size_bytes=size_bytes):
-        logger.debug("Skipping oversized file: %s (%d bytes)", path, size_bytes)
+        logger.debug("skipping_oversized_file", path=path, size_bytes=size_bytes)
         return {"status": "skipped", "reason": "size"}
 
     # Step 4: Compute content hash
@@ -122,7 +122,7 @@ async def index_file(
         )
         session.add(chunk)
 
-    logger.info("Indexed %s: %d chunks", path, len(chunks))
+    logger.info("file_indexed", path=path, chunks=len(chunks))
     return {"status": "indexed", "chunks": len(chunks)}
 
 
@@ -153,5 +153,5 @@ async def delete_file(session: AsyncSession, repo_id: int, path: str) -> dict:
     )
     await session.delete(existing_file)
 
-    logger.info("Deleted %s from repo %d", path, repo_id)
+    logger.info("file_deleted", path=path, repo_id=repo_id)
     return {"status": "deleted"}

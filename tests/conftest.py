@@ -56,7 +56,7 @@ async def client(
     app.dependency_overrides[get_db_session] = _override_db_session
     app.dependency_overrides[get_task_queue] = lambda: mock_task_queue
     app.dependency_overrides[get_gemini_client] = lambda: mock_gemini_client
-    transport = ASGITransport(app=app)
+    transport = ASGITransport(app=app, raise_app_exceptions=False)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
         yield ac
     app.dependency_overrides.clear()

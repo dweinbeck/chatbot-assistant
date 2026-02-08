@@ -19,5 +19,13 @@ class Settings(BaseSettings):
     host: str = "0.0.0.0"
     port: int = 8080
 
+    # Phase 2: Ingestion pipeline settings
+    github_webhook_secret: str = "dev-secret"
+    github_token: str = ""
+    gcp_project: str = ""
+    gcp_location: str = "us-central1"
+    cloud_tasks_queue: str = "indexing"
+    task_handler_base_url: str = "http://localhost:8080"
+
 
 settings = Settings()

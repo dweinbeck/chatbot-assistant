@@ -20,6 +20,9 @@ from app.db.models import KBChunk, KBFile
 from app.db.session import get_db_session
 from app.dependencies import get_task_queue
 from app.schemas.admin import (
+    BackfillRepoResult,
+    BackfillRequest,
+    BackfillResponse,
     IngestURLRequest,
     IngestURLResponse,
     SyncRepoRequest,
@@ -123,6 +126,88 @@ async def sync_repo(
         tasks_enqueued=tasks_enqueued,
         files_skipped_denylist=files_skipped,
     )
+
+
+@router.post("/backfill")
+async def backfill(
+    request: BackfillRequest,
+    task_queue: Annotated[TaskQueue, Depends(get_task_queue)],
+) -> BackfillResponse:
+    """Backfill multiple repos at once by listing files and enqueuing index tasks."""
+    results: list[BackfillRepoResult] = []
+    total_enqueued = 0
+
+    for item in request.repos:
+        try:
+            async with httpx.AsyncClient(timeout=30.0) as client:
+                meta = await get_repo_metadata(
+                    client, item.owner, item.repo, settings.github_token
+                )
+                repo_id: int = meta["id"]
+                files = await list_repo_files(
+                    client, item.owner, item.repo, item.ref, settings.github_token
+                )
+
+            base_url = settings.task_handler_base_url
+            tasks_enqueued = 0
+            files_skipped = 0
+
+            for path in files:
+                if is_denied(path):
+                    files_skipped += 1
+                    continue
+
+                payload = IndexFilePayload(
+                    repo_owner=item.owner,
+                    repo_name=item.repo,
+                    repo_id=repo_id,
+                    path=path,
+                    commit_sha=item.ref,
+                )
+                await task_queue.enqueue(
+                    f"{base_url}/tasks/index-file",
+                    payload.model_dump(),
+                )
+                tasks_enqueued += 1
+
+            total_enqueued += tasks_enqueued
+
+            logger.info(
+                "backfill_repo_complete",
+                owner=item.owner,
+                repo=item.repo,
+                files_found=len(files),
+                tasks_enqueued=tasks_enqueued,
+                files_skipped=files_skipped,
+            )
+
+            results.append(
+                BackfillRepoResult(
+                    owner=item.owner,
+                    repo=item.repo,
+                    status="accepted",
+                    files_found=len(files),
+                    tasks_enqueued=tasks_enqueued,
+                    files_skipped_denylist=files_skipped,
+                )
+            )
+        except Exception as exc:
+            logger.error(
+                "backfill_repo_failed",
+                owner=item.owner,
+                repo=item.repo,
+                error=str(exc),
+            )
+            results.append(
+                BackfillRepoResult(
+                    owner=item.owner,
+                    repo=item.repo,
+                    status="error",
+                    error=str(exc),
+                )
+            )
+
+    return BackfillResponse(results=results, total_tasks_enqueued=total_enqueued)
 
 
 @router.post("/ingest-url")

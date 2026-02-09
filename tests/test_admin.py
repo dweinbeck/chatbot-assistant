@@ -88,6 +88,96 @@ async def test_sync_repo_all_denied(client, mock_task_queue):
 # ---------------------------------------------------------------------------
 
 
+# ---------------------------------------------------------------------------
+# POST /admin/backfill
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.anyio
+async def test_backfill_multiple_repos(client, mock_task_queue):
+    """backfill processes multiple repos and aggregates results."""
+    with (
+        patch("app.routers.admin.get_repo_metadata", new_callable=AsyncMock) as mock_meta,
+        patch("app.routers.admin.list_repo_files", new_callable=AsyncMock) as mock_list,
+    ):
+        mock_meta.side_effect = [{"id": 1}, {"id": 2}]
+        mock_list.side_effect = [
+            ["src/main.py", "README.md"],
+            ["docs/guide.md", "logo.png"],
+        ]
+
+        resp = await client.post(
+            "/admin/backfill",
+            json={
+                "repos": [
+                    {"owner": "org", "repo": "repo-a"},
+                    {"owner": "org", "repo": "repo-b", "ref": "develop"},
+                ]
+            },
+        )
+
+    assert resp.status_code == 200
+    data = resp.json()
+    assert len(data["results"]) == 2
+
+    # repo-a: 2 files, both allowed
+    assert data["results"][0]["status"] == "accepted"
+    assert data["results"][0]["tasks_enqueued"] == 2
+
+    # repo-b: 2 files, logo.png denied
+    assert data["results"][1]["status"] == "accepted"
+    assert data["results"][1]["tasks_enqueued"] == 1
+    assert data["results"][1]["files_skipped_denylist"] == 1
+
+    assert data["total_tasks_enqueued"] == 3
+    assert len(mock_task_queue.tasks) == 3
+
+
+@pytest.mark.anyio
+async def test_backfill_partial_failure(client, mock_task_queue):
+    """One repo failure doesn't block others; error is captured."""
+    with (
+        patch("app.routers.admin.get_repo_metadata", new_callable=AsyncMock) as mock_meta,
+        patch("app.routers.admin.list_repo_files", new_callable=AsyncMock) as mock_list,
+    ):
+        mock_meta.side_effect = [Exception("GitHub API error"), {"id": 10}]
+        mock_list.return_value = ["file.py"]
+
+        resp = await client.post(
+            "/admin/backfill",
+            json={
+                "repos": [
+                    {"owner": "org", "repo": "broken-repo"},
+                    {"owner": "org", "repo": "good-repo"},
+                ]
+            },
+        )
+
+    assert resp.status_code == 200
+    data = resp.json()
+    assert len(data["results"]) == 2
+
+    assert data["results"][0]["status"] == "error"
+    assert "GitHub API error" in data["results"][0]["error"]
+
+    assert data["results"][1]["status"] == "accepted"
+    assert data["results"][1]["tasks_enqueued"] == 1
+
+    assert data["total_tasks_enqueued"] == 1
+
+
+@pytest.mark.anyio
+async def test_backfill_empty_repos_rejected(client):
+    """Empty repos list returns 422 validation error."""
+    resp = await client.post("/admin/backfill", json={"repos": []})
+    assert resp.status_code == 422
+
+
+# ---------------------------------------------------------------------------
+# POST /admin/ingest-url
+# ---------------------------------------------------------------------------
+
+
 @pytest.mark.anyio
 async def test_ingest_url_creates_chunks(client, mock_db_session):
     """ingest-url fetches HTML, extracts text, and creates chunks."""

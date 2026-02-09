@@ -23,7 +23,7 @@ from app.schemas.chat import (
     LLMResponse,
 )
 from app.services.gemini_client import SYSTEM_PROMPT, LLMClient
-from app.services.retrieval import RetrievedChunk, retrieve_chunks
+from app.services.retrieval import RetrievedChunk, has_any_chunks, retrieve_chunks
 
 logger = structlog.get_logger()
 
@@ -114,10 +114,19 @@ async def chat(
 
     # 2. Handle empty retrieval
     if not chunks:
+        if not await has_any_chunks(session):
+            return ChatResponse(
+                answer=(
+                    "No repositories have been indexed yet. "
+                    "Use POST /admin/sync-repo to sync a repository."
+                ),
+                citations=[],
+                confidence="low",
+            )
         return ChatResponse(
             answer=(
-                "I don't know. Could you provide more details "
-                "about what you're looking for?"
+                "I couldn't find relevant content for your question. "
+                "Try rephrasing with more specific terms."
             ),
             citations=[],
             confidence="low",

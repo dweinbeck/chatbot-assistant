@@ -107,23 +107,52 @@ async def test_chat_success_with_citations(
     assert data["confidence"] == "high"
 
 
-# ---------- Test 2: Empty retrieval ----------
+# ---------- Test 2a: Empty DB suggests sync ----------
 
 
 @pytest.mark.anyio
+@patch("app.routers.chat.has_any_chunks", new_callable=AsyncMock)
 @patch("app.routers.chat.retrieve_chunks", new_callable=AsyncMock)
-async def test_chat_empty_retrieval_returns_i_dont_know(
+async def test_chat_empty_db_suggests_sync(
     mock_retrieve: AsyncMock,
+    mock_has_chunks: AsyncMock,
     client: AsyncClient,
 ) -> None:
-    """POST /chat with no matching chunks returns 'I don't know'."""
+    """POST /chat with empty database suggests syncing a repo."""
     mock_retrieve.return_value = []
+    mock_has_chunks.return_value = False
 
     response = await client.post("/chat", json={"question": "What is foo?"})
 
     assert response.status_code == 200
     data = response.json()
-    assert "I don't know" in data["answer"]
+    assert "No repositories have been indexed" in data["answer"]
+    assert "/admin/sync-repo" in data["answer"]
+    assert data["confidence"] == "low"
+    assert data["citations"] == []
+
+
+# ---------- Test 2b: No match suggests rephrase ----------
+
+
+@pytest.mark.anyio
+@patch("app.routers.chat.has_any_chunks", new_callable=AsyncMock)
+@patch("app.routers.chat.retrieve_chunks", new_callable=AsyncMock)
+async def test_chat_no_match_suggests_rephrase(
+    mock_retrieve: AsyncMock,
+    mock_has_chunks: AsyncMock,
+    client: AsyncClient,
+) -> None:
+    """POST /chat with indexed data but no match suggests rephrasing."""
+    mock_retrieve.return_value = []
+    mock_has_chunks.return_value = True
+
+    response = await client.post("/chat", json={"question": "What is foo?"})
+
+    assert response.status_code == 200
+    data = response.json()
+    assert "couldn't find relevant content" in data["answer"]
+    assert "rephrasing" in data["answer"]
     assert data["confidence"] == "low"
     assert data["citations"] == []
 

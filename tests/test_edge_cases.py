@@ -311,30 +311,36 @@ async def test_delete_file_handler_exception_returns_500(
 
 
 @pytest.mark.anyio
+@patch("app.routers.chat.has_any_chunks", new_callable=AsyncMock)
 @patch("app.routers.chat.retrieve_chunks", new_callable=AsyncMock)
 async def test_chat_whitespace_question(
     mock_retrieve: AsyncMock,
+    mock_has_chunks: AsyncMock,
     client: AsyncClient,
 ) -> None:
     """Whitespace-only question (3 spaces) passes min_length=1 and gets empty retrieval."""
     mock_retrieve.return_value = []
+    mock_has_chunks.return_value = True
 
     response = await client.post("/chat", json={"question": "   "})
 
     assert response.status_code == 200
     data = response.json()
-    assert "I don't know" in data["answer"]
+    assert "couldn't find relevant content" in data["answer"]
 
 
 @pytest.mark.anyio
+@patch("app.routers.chat.has_any_chunks", new_callable=AsyncMock)
 @patch("app.routers.chat.retrieve_chunks", new_callable=AsyncMock)
 async def test_chat_concurrent_requests(
     mock_retrieve: AsyncMock,
+    mock_has_chunks: AsyncMock,
     client: AsyncClient,
     mock_gemini_client: InMemoryLLMClient,
 ) -> None:
     """5 concurrent chat requests all return 200 with no shared-state issues."""
     mock_retrieve.return_value = []
+    mock_has_chunks.return_value = True
 
     async def _send_chat(question: str) -> int:
         resp = await client.post("/chat", json={"question": question})

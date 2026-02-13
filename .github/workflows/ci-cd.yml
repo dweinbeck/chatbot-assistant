@@ -2,12 +2,11 @@ name: CI/CD
 
 on:
   push:
-    branches: [main]
+    branches: [main, dev]
   pull_request:
-    branches: [main]
+    branches: [main, dev]
 
 env:
-  PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
   REGION: us-central1
   SERVICE: chatbot-assistant
   REPO: chatbot-assistant
@@ -39,10 +38,13 @@ jobs:
       - name: Test
         run: uv run pytest tests/
 
-  deploy:
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+  deploy-dev:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/dev'
     needs: check
     runs-on: ubuntu-latest
+    environment: dev
+    env:
+      PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
     permissions:
       contents: read
       id-token: write
@@ -91,5 +93,63 @@ jobs:
             --service-account=chatbot-assistant@${{ env.PROJECT_ID }}.iam.gserviceaccount.com
             --add-cloudsql-instances=${{ vars.CLOUD_SQL_INSTANCE }}
             --set-secrets=DATABASE_URL=database-url:latest,GITHUB_WEBHOOK_SECRET=github-webhook-secret:latest,GITHUB_TOKEN=github-token:latest
-            --set-env-vars=GCP_PROJECT=${{ env.PROJECT_ID }},GCP_LOCATION=${{ env.REGION }},CLOUD_TASKS_QUEUE=indexing,GEMINI_MODEL=gemini-2.5-flash-lite,TASK_HANDLER_BASE_URL=${{ vars.TASK_HANDLER_BASE_URL }},CORS_ORIGINS=https://dan-weinbeck.com
+            --set-env-vars=GCP_PROJECT=${{ env.PROJECT_ID }},GCP_LOCATION=${{ env.REGION }},CLOUD_TASKS_QUEUE=indexing,GEMINI_MODEL=gemini-2.5-flash-lite,TASK_HANDLER_BASE_URL=${{ vars.TASK_HANDLER_BASE_URL }},CORS_ORIGINS=${{ vars.CORS_ORIGINS }}
+            --allow-unauthenticated
+
+  deploy-prod:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: check
+    runs-on: ubuntu-latest
+    environment: prod
+    env:
+      PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v3
+        with:
+          project_id: ${{ env.PROJECT_ID }}
+          workload_identity_provider: ${{ vars.WIF_PROVIDER }}
+          service_account: ${{ vars.WIF_SERVICE_ACCOUNT }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Authenticate Docker
+        run: gcloud auth configure-docker ${{ env.REGION }}-docker.pkg.dev
+
+      - name: Build Docker image
+        run: |
+          docker build \
+            -t ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPO }}/${{ env.IMAGE_NAME }}:${{ github.sha }} \
+            -t ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPO }}/${{ env.IMAGE_NAME }}:latest \
+            .
+
+      - name: Push Docker image
+        run: |
+          docker push ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPO }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
+          docker push ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPO }}/${{ env.IMAGE_NAME }}:latest
+
+      - name: Deploy to Cloud Run
+        uses: google-github-actions/deploy-cloudrun@v2
+        with:
+          service: ${{ env.SERVICE }}
+          image: ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPO }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
+          region: ${{ env.REGION }}
+          flags: >-
+            --port=8080
+            --memory=512Mi
+            --cpu=1
+            --min-instances=0
+            --max-instances=4
+            --concurrency=80
+            --timeout=300
+            --service-account=chatbot-assistant@${{ env.PROJECT_ID }}.iam.gserviceaccount.com
+            --add-cloudsql-instances=${{ vars.CLOUD_SQL_INSTANCE }}
+            --set-secrets=DATABASE_URL=database-url:latest,GITHUB_WEBHOOK_SECRET=github-webhook-secret:latest,GITHUB_TOKEN=github-token:latest
+            --set-env-vars=GCP_PROJECT=${{ env.PROJECT_ID }},GCP_LOCATION=${{ env.REGION }},CLOUD_TASKS_QUEUE=indexing,GEMINI_MODEL=gemini-2.5-flash-lite,TASK_HANDLER_BASE_URL=${{ vars.TASK_HANDLER_BASE_URL }},CORS_ORIGINS=${{ vars.CORS_ORIGINS }}
             --allow-unauthenticated

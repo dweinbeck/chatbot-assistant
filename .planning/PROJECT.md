@@ -42,10 +42,10 @@ When someone asks about my work, they get an accurate, cited answer drawn direct
 
 ## Context
 
-- Shipped v1.0 with 4,675 LOC Python across 62 files
+- Shipped v1.0 with 5,860 LOC Python across 52 source files
 - Tech stack: Python / FastAPI / SQLAlchemy / Alembic / structlog / httpx / google-genai
 - Infrastructure: GCP Cloud Run / Cloud SQL / Secret Manager / Cloud Tasks / GitHub Actions
-- 160 tests passing (mock-based, no external dependencies)
+- 165 tests passing (mock-based, no external dependencies)
 - Designed to be reusable — can point at any GitHub account to index different repos
 - Cost-optimized: scale-to-zero Cloud Run, no vector DB, Flash-Lite model
 
@@ -69,10 +69,10 @@ When someone asks about my work, they get an accurate, cited answer drawn direct
 | Python / FastAPI | Fast to build, good SDK support | ✓ Good — async throughout, clean DI with Depends() |
 | Standalone repo | Clean separation from frontend, reusable for other sites | ✓ Good — clean API boundary at /chat endpoint |
 | google-genai SDK (not vertexai) | Modern SDK with native async support | ✓ Good — client.aio for non-blocking LLM calls |
-| Mock-based tests | CI reliability without real DB/GCP | ✓ Good — 160 tests in 0.59s, no external dependencies |
+| Mock-based tests | CI reliability without real DB/GCP | ✓ Good — 165 tests in ~0.6s, no external dependencies |
 | structlog for logging | Structured JSON in production, console in dev | ✓ Good — clean observability pattern |
 | Mechanical citation verification | Drop hallucinated citations from LLM output | ✓ Good — prevents false citations reaching users |
 | Confidence from retrieval signals | Use chunk count + ts_rank_cd, not LLM self-assessment | ✓ Good — objective, reproducible scoring |
 
 ---
-*Last updated: 2026-02-08 after v1.0 milestone*
+*Last updated: 2026-02-09 after v1.0 milestone completion*

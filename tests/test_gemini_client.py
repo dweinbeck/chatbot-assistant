@@ -60,12 +60,14 @@ async def test_in_memory_client_captures_calls() -> None:
 
 async def test_in_memory_client_custom_response() -> None:
     """Setting client.response changes the returned value."""
-    custom = json.dumps({
-        "answer": "custom answer",
-        "citations": [{"source": "owner/repo/file.py@abc123:1-10", "relevance": "defines X"}],
-        "needs_clarification": False,
-        "clarifying_question": None,
-    })
+    custom = json.dumps(
+        {
+            "answer": "custom answer",
+            "citations": [{"source": "owner/repo/file.py@abc123:1-10", "relevance": "defines X"}],
+            "needs_clarification": False,
+            "clarifying_question": None,
+        }
+    )
     client = InMemoryLLMClient()
     client.response = custom
 
@@ -87,15 +89,17 @@ async def test_in_memory_client_custom_response() -> None:
 
 def test_llm_response_parses_valid_json() -> None:
     """A well-formed JSON string parses into LLMResponse with correct fields."""
-    raw = json.dumps({
-        "answer": "The function sorts a list using quicksort.",
-        "citations": [
-            {"source": "acme/tools/sort.py@def456:12-30", "relevance": "sort implementation"},
-            {"source": "acme/tools/utils.py@def456:1-5", "relevance": "helper import"},
-        ],
-        "needs_clarification": False,
-        "clarifying_question": None,
-    })
+    raw = json.dumps(
+        {
+            "answer": "The function sorts a list using quicksort.",
+            "citations": [
+                {"source": "acme/tools/sort.py@def456:12-30", "relevance": "sort implementation"},
+                {"source": "acme/tools/utils.py@def456:1-5", "relevance": "helper import"},
+            ],
+            "needs_clarification": False,
+            "clarifying_question": None,
+        }
+    )
     resp = LLMResponse.model_validate_json(raw)
     assert resp.answer == "The function sorts a list using quicksort."
     assert len(resp.citations) == 2
@@ -107,12 +111,14 @@ def test_llm_response_parses_valid_json() -> None:
 
 def test_llm_response_with_clarification() -> None:
     """LLMResponse correctly handles the clarification case."""
-    raw = json.dumps({
-        "answer": "I don't know based on the provided context.",
-        "citations": [],
-        "needs_clarification": True,
-        "clarifying_question": "Which module are you asking about?",
-    })
+    raw = json.dumps(
+        {
+            "answer": "I don't know based on the provided context.",
+            "citations": [],
+            "needs_clarification": True,
+            "clarifying_question": "Which module are you asking about?",
+        }
+    )
     resp = LLMResponse.model_validate_json(raw)
     assert resp.needs_clarification is True
     assert resp.clarifying_question == "Which module are you asking about?"

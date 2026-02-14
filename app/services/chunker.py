@@ -11,9 +11,7 @@ import re
 # Regex patterns for detecting function/class boundaries per language.
 # Each pattern matches lines that typically start a new logical block.
 BOUNDARY_PATTERNS: dict[str, re.Pattern[str]] = {
-    ".py": re.compile(
-        r"^(?:class |def |async def )", re.MULTILINE
-    ),
+    ".py": re.compile(r"^(?:class |def |async def )", re.MULTILINE),
     ".js": re.compile(
         r"^(?:function |class |const \w+ = (?:async )?\(|export (?:default )?(?:function|class))",
         re.MULTILINE,
@@ -29,9 +27,7 @@ BOUNDARY_PATTERNS: dict[str, re.Pattern[str]] = {
         re.MULTILINE,
     ),
     ".go": re.compile(r"^(?:func |type \w+ struct)", re.MULTILINE),
-    ".rs": re.compile(
-        r"^(?:fn |pub fn |impl |struct |enum |trait )", re.MULTILINE
-    ),
+    ".rs": re.compile(r"^(?:fn |pub fn |impl |struct |enum |trait )", re.MULTILINE),
     ".java": re.compile(
         r"^(?:\s*(?:public|private|protected)?\s*(?:static\s+)?(?:class |interface ))",
         re.MULTILINE,
@@ -166,9 +162,7 @@ def chunk_file(
     return chunk_code(content, ext_lower, min_lines=min_lines, max_lines=max_lines)
 
 
-def _fallback_chunks(
-    lines: list[str], max_lines: int
-) -> list[tuple[int, int, str]]:
+def _fallback_chunks(lines: list[str], max_lines: int) -> list[tuple[int, int, str]]:
     """Split lines into fixed-size chunks of max_lines each.
 
     The last chunk contains the remainder and may be smaller than max_lines.
@@ -185,9 +179,7 @@ def _fallback_chunks(
     return chunks
 
 
-def _split_at_boundaries(
-    boundary_indices: list[int], total_lines: int
-) -> list[tuple[int, int]]:
+def _split_at_boundaries(boundary_indices: list[int], total_lines: int) -> list[tuple[int, int]]:
     """Create (start, end) index pairs from boundary positions.
 
     Boundaries are 0-indexed line numbers. Returns 0-indexed half-open

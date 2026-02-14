@@ -172,7 +172,8 @@ async def test_webhook_parses_push_payload(client: AsyncClient) -> None:
 
 @pytest.mark.anyio
 async def test_webhook_enqueues_index_tasks(
-    client: AsyncClient, mock_task_queue: InMemoryTaskQueue,
+    client: AsyncClient,
+    mock_task_queue: InMemoryTaskQueue,
 ) -> None:
     """Push with 2 added files enqueues 2 index tasks."""
     payload = _make_push_payload(added=["src/a.py", "src/b.py"])
@@ -198,7 +199,8 @@ async def test_webhook_enqueues_index_tasks(
 
 @pytest.mark.anyio
 async def test_webhook_enqueues_delete_tasks(
-    client: AsyncClient, mock_task_queue: InMemoryTaskQueue,
+    client: AsyncClient,
+    mock_task_queue: InMemoryTaskQueue,
 ) -> None:
     """Push with 1 removed file enqueues 1 delete task."""
     payload = _make_push_payload(removed=["old_file.py"])
@@ -223,7 +225,8 @@ async def test_webhook_enqueues_delete_tasks(
 
 @pytest.mark.anyio
 async def test_webhook_mixed_operations(
-    client: AsyncClient, mock_task_queue: InMemoryTaskQueue,
+    client: AsyncClient,
+    mock_task_queue: InMemoryTaskQueue,
 ) -> None:
     """Push with added + modified + removed files enqueues correct task types."""
     payload = _make_push_payload(

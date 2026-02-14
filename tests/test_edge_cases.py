@@ -346,9 +346,7 @@ async def test_chat_concurrent_requests(
         resp = await client.post("/chat", json={"question": question})
         return resp.status_code
 
-    results = await asyncio.gather(*[
-        _send_chat(f"Question number {i}") for i in range(5)
-    ])
+    results = await asyncio.gather(*[_send_chat(f"Question number {i}") for i in range(5)])
 
     assert all(code == 200 for code in results)
     assert len(results) == 5

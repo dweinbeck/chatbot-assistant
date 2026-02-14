@@ -374,8 +374,6 @@ async def test_retrieve_chunks_respects_max_chunks() -> None:
         mock_tri.return_value = tri_chunks
         session = AsyncMock()
 
-        results = await retrieve_chunks(
-            session, "query", min_fts_results=3, max_chunks=12
-        )
+        results = await retrieve_chunks(session, "query", min_fts_results=3, max_chunks=12)
 
     assert len(results) == 12

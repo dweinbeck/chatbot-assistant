@@ -18,9 +18,7 @@ class ChatRequest(BaseModel):
 class Citation(BaseModel):
     """A verified citation in the API response."""
 
-    source: str = Field(
-        description="Citation in owner/repo/path@sha:start_line-end_line format"
-    )
+    source: str = Field(description="Citation in owner/repo/path@sha:start_line-end_line format")
     relevance: str = Field(description="How this chunk relates to the answer")
 
 

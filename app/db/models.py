@@ -74,6 +74,4 @@ class KBChunk(Base):
     )
     updated_at: Mapped[datetime] = mapped_column(server_default=func.now(), onupdate=func.now())
 
-    __table_args__ = (
-        Index("ix_kb_chunks_content_tsv", "content_tsv", postgresql_using="gin"),
-    )
+    __table_args__ = (Index("ix_kb_chunks_content_tsv", "content_tsv", postgresql_using="gin"),)

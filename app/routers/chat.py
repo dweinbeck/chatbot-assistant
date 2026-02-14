@@ -79,8 +79,7 @@ def verify_citations(
     ``owner/repo/path@sha:start_line-end_line``.
     """
     valid_sources = {
-        f"{c.repo_owner}/{c.repo_name}/{c.path}@{c.commit_sha}:"
-        f"{c.start_line}-{c.end_line}"
+        f"{c.repo_owner}/{c.repo_name}/{c.path}@{c.commit_sha}:{c.start_line}-{c.end_line}"
         for c in chunks
     }
     return [
@@ -150,8 +149,7 @@ async def chat(
         logger.exception("llm_generation_failed")
         return ChatResponse(
             answer=(
-                "I'm sorry, I encountered an error processing your question. "
-                "Please try again."
+                "I'm sorry, I encountered an error processing your question. Please try again."
             ),
             citations=[],
             confidence="low",

@@ -34,11 +34,14 @@ async def verify_github_signature(
         HTTPException: 401 if signature does not match.
     """
     body = await request.body()
-    expected = "sha256=" + hmac.new(
-        settings.github_webhook_secret.encode("utf-8"),
-        msg=body,
-        digestmod=hashlib.sha256,
-    ).hexdigest()
+    expected = (
+        "sha256="
+        + hmac.new(
+            settings.github_webhook_secret.encode("utf-8"),
+            msg=body,
+            digestmod=hashlib.sha256,
+        ).hexdigest()
+    )
     if not hmac.compare_digest(expected, x_hub_signature_256):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,

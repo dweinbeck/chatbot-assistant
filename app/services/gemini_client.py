@@ -35,9 +35,7 @@ Each code chunk is provided with a header line:
 class LLMClient(Protocol):
     """Protocol for LLM generation with structured output."""
 
-    async def generate(
-        self, system_prompt: str, user_content: str, response_schema: type
-    ) -> str:
+    async def generate(self, system_prompt: str, user_content: str, response_schema: type) -> str:
         """Generate a response given a system prompt, user content, and schema.
 
         Returns the raw JSON string from the LLM.
@@ -58,9 +56,7 @@ class GeminiClient:
         self._client = genai.Client(vertexai=True, project=project, location=location)
         self._model = model
 
-    async def generate(
-        self, system_prompt: str, user_content: str, response_schema: type
-    ) -> str:
+    async def generate(self, system_prompt: str, user_content: str, response_schema: type) -> str:
         """Generate structured JSON via Gemini, returning the raw text."""
         from google.genai import types
 
@@ -87,13 +83,13 @@ class InMemoryLLMClient:
             '"needs_clarification":false,"clarifying_question":null}'
         )
 
-    async def generate(
-        self, system_prompt: str, user_content: str, response_schema: type
-    ) -> str:
+    async def generate(self, system_prompt: str, user_content: str, response_schema: type) -> str:
         """Append call details and return the canned response."""
-        self.calls.append({
-            "system_prompt": system_prompt,
-            "user_content": user_content,
-            "response_schema": response_schema,
-        })
+        self.calls.append(
+            {
+                "system_prompt": system_prompt,
+                "user_content": user_content,
+                "response_schema": response_schema,
+            }
+        )
         return self.response

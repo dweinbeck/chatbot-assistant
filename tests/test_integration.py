@@ -135,12 +135,14 @@ def _llm_response_json(
     clarifying_question: str | None = None,
 ) -> str:
     """Build a valid LLMResponse JSON string."""
-    return json.dumps({
-        "answer": answer,
-        "citations": citations or [],
-        "needs_clarification": needs_clarification,
-        "clarifying_question": clarifying_question,
-    })
+    return json.dumps(
+        {
+            "answer": answer,
+            "citations": citations or [],
+            "needs_clarification": needs_clarification,
+            "clarifying_question": clarifying_question,
+        }
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -213,9 +215,7 @@ async def test_full_pipeline_webhook_to_chat(
         new_callable=AsyncMock,
         return_value=chunks,
     ):
-        chat_resp = await client.post(
-            "/chat", json={"question": "What does main.py do?"}
-        )
+        chat_resp = await client.post("/chat", json={"question": "What does main.py do?"})
 
     assert chat_resp.status_code == 200
     chat_data = chat_resp.json()

@@ -63,12 +63,14 @@ def _llm_response_json(
     clarifying_question: str | None = None,
 ) -> str:
     """Build a valid LLMResponse JSON string."""
-    return json.dumps({
-        "answer": answer,
-        "citations": citations or [],
-        "needs_clarification": needs_clarification,
-        "clarifying_question": clarifying_question,
-    })
+    return json.dumps(
+        {
+            "answer": answer,
+            "citations": citations or [],
+            "needs_clarification": needs_clarification,
+            "clarifying_question": clarifying_question,
+        }
+    )
 
 
 # ---------- Test 1: Success with citations ----------
@@ -244,7 +246,8 @@ async def test_chat_confidence_high(
         {"source": _citation_source(chunks[0]), "relevance": "relevant"},
     ]
     mock_gemini_client.response = _llm_response_json(
-        answer="Here is the answer.", citations=citations,
+        answer="Here is the answer.",
+        citations=citations,
     )
 
     response = await client.post("/chat", json={"question": "What is it?"})
@@ -274,7 +277,8 @@ async def test_chat_confidence_medium_enough_chunks(
         {"source": _citation_source(chunks[0]), "relevance": "relevant"},
     ]
     mock_gemini_client.response = _llm_response_json(
-        answer="Answer.", citations=citations,
+        answer="Answer.",
+        citations=citations,
     )
 
     response = await client.post("/chat", json={"question": "What is it?"})
@@ -304,7 +308,8 @@ async def test_chat_confidence_medium_high_score(
         {"source": _citation_source(chunks[0]), "relevance": "relevant"},
     ]
     mock_gemini_client.response = _llm_response_json(
-        answer="Answer.", citations=citations,
+        answer="Answer.",
+        citations=citations,
     )
 
     response = await client.post("/chat", json={"question": "What is it?"})
@@ -331,7 +336,8 @@ async def test_chat_confidence_low(
         {"source": _citation_source(chunks[0]), "relevance": "relevant"},
     ]
     mock_gemini_client.response = _llm_response_json(
-        answer="Maybe.", citations=citations,
+        answer="Maybe.",
+        citations=citations,
     )
 
     response = await client.post("/chat", json={"question": "What is it?"})

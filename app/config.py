@@ -29,6 +29,7 @@ class Settings(BaseSettings):
     cloud_tasks_queue: str = "indexing"
     task_handler_base_url: str = "http://localhost:8080"
     cors_origins: str = ""
+    api_key: str = ""
 
 
 settings = Settings()

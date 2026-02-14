@@ -41,11 +41,17 @@ class CloudTasksQueue:
         """Create an HTTP POST Cloud Task and return its name."""
         from google.cloud import tasks_v2
 
+        from app.config import settings
+
+        headers = {"Content-Type": "application/json"}
+        if settings.api_key:
+            headers["X-API-Key"] = settings.api_key
+
         task = tasks_v2.Task(
             http_request=tasks_v2.HttpRequest(
                 http_method=tasks_v2.HttpMethod.POST,
                 url=url,
-                headers={"Content-Type": "application/json"},
+                headers=headers,
                 body=json.dumps(payload).encode(),
             ),
         )

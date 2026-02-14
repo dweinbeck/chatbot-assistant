@@ -10,6 +10,7 @@ from fastapi.responses import JSONResponse
 from app.config import settings
 from app.db.engine import dispose_engine, init_engine
 from app.logging_config import configure_logging
+from app.middleware.api_key import ApiKeyMiddleware
 from app.routers import admin, chat, health, tasks, webhooks
 
 
@@ -34,6 +35,8 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
 
 
 app = FastAPI(title=settings.app_name, lifespan=lifespan)
+
+app.add_middleware(ApiKeyMiddleware)
 
 if settings.cors_origins:
     from fastapi.middleware.cors import CORSMiddleware

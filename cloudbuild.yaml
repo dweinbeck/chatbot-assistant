@@ -1,0 +1,51 @@
+steps:
+  # 1. Build the Docker image
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'build'
+      - '-t'
+      - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPO_NAME}/${_SERVICE_NAME}:${SHORT_SHA}'
+      - '-t'
+      - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPO_NAME}/${_SERVICE_NAME}:latest'
+      - '.'
+
+  # 2. Push the image to Artifact Registry
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'push'
+      - '--all-tags'
+      - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPO_NAME}/${_SERVICE_NAME}'
+
+  # 3. Deploy to Cloud Run
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: gcloud
+    args:
+      - 'run'
+      - 'deploy'
+      - '${_SERVICE_NAME}'
+      - '--image=${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPO_NAME}/${_SERVICE_NAME}:${SHORT_SHA}'
+      - '--region=${_REGION}'
+      - '--platform=managed'
+      - '--port=8080'
+      - '--memory=512Mi'
+      - '--cpu=1'
+      - '--min-instances=0'
+      - '--max-instances=4'
+      - '--concurrency=80'
+      - '--timeout=300'
+      - '--ingress=internal-and-cloud-load-balancing'
+      - '--allow-unauthenticated'
+      - '--service-account=${_SERVICE_NAME}@${PROJECT_ID}.iam.gserviceaccount.com'
+      - '--add-cloudsql-instances=${PROJECT_ID}:${_REGION}:${_SERVICE_NAME}'
+      - '--set-secrets=DATABASE_URL=database-url:latest,GITHUB_WEBHOOK_SECRET=github-webhook-secret:latest,GITHUB_TOKEN=github-token:latest,API_KEY=chatbot-api-key:latest'
+      - '--set-env-vars=GCP_PROJECT=${PROJECT_ID},GCP_LOCATION=${_REGION},CLOUD_TASKS_QUEUE=indexing,GEMINI_MODEL=gemini-2.5-flash-lite,TASK_HANDLER_BASE_URL=${_TASK_HANDLER_BASE_URL},CORS_ORIGINS=${_CORS_ORIGINS}'
+
+substitutions:
+  _REGION: us-central1
+  _SERVICE_NAME: chatbot-assistant
+  _REPO_NAME: chatbot-assistant
+  _TASK_HANDLER_BASE_URL: ''
+  _CORS_ORIGINS: ''
+
+options:
+  logging: CLOUD_LOGGING_ONLY

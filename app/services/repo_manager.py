@@ -18,9 +18,20 @@ async def get_or_create_repo(
 ) -> Repo:
     """Return an existing Repo row or create one and flush to get its ID.
 
-    Safe to call repeatedly — no-op if the row already exists.
+    Looks up by primary key first, then by the (owner, name) unique
+    constraint to handle cases where the same repo was previously
+    created with a different ID (e.g. synthetic ID from ingest-url
+    vs real GitHub ID from sync-repo).
     """
     result = await session.execute(select(Repo).where(Repo.id == repo_id))
+    repo = result.scalar_one_or_none()
+    if repo is not None:
+        return repo
+
+    # Check by owner+name in case the repo exists with a different ID
+    result = await session.execute(
+        select(Repo).where(Repo.owner == owner, Repo.name == name)
+    )
     repo = result.scalar_one_or_none()
     if repo is not None:
         return repo

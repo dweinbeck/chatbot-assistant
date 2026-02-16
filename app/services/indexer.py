@@ -58,7 +58,11 @@ async def index_file(
         - {"status": "indexed", "chunks": N} on successful indexing
     """
     # Step 0: Ensure Repo row exists (FK integrity)
-    await get_or_create_repo(session, repo_id, owner, repo)
+    # Use the returned repo's actual ID for all FK references, since the
+    # repo may have been created earlier with a different ID (e.g. synthetic
+    # ID from ingest-url vs real GitHub ID from sync-repo).
+    repo_row = await get_or_create_repo(session, repo_id, owner, repo)
+    actual_repo_id = repo_row.id
 
     # Step 1: Check denylist by path pattern
     if is_denied(path):
@@ -82,7 +86,7 @@ async def index_file(
 
     # Step 5: Query existing KBFile by repo_id + path
     result = await session.execute(
-        select(KBFile).where(KBFile.repo_id == repo_id, KBFile.path == path)
+        select(KBFile).where(KBFile.repo_id == actual_repo_id, KBFile.path == path)
     )
     existing_file = result.scalar_one_or_none()
 
@@ -100,7 +104,7 @@ async def index_file(
     else:
         # New file -- create KBFile record
         kb_file = KBFile(
-            repo_id=repo_id,
+            repo_id=actual_repo_id,
             path=path,
             commit_sha=commit_sha,
             sha256=content_hash,
@@ -114,7 +118,7 @@ async def index_file(
     # Step 7: Create KBChunk records
     for start_line, end_line, chunk_content in chunks:
         chunk = KBChunk(
-            repo_id=repo_id,
+            repo_id=actual_repo_id,
             file_id=kb_file.id,
             path=path,
             commit_sha=commit_sha,

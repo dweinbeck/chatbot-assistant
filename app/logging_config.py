@@ -27,6 +27,7 @@ def configure_logging(*, json_logs: bool = True, log_level: str = "INFO") -> Non
         structlog.stdlib.add_logger_name,
         structlog.processors.TimeStamper(fmt="iso"),
         structlog.processors.StackInfoRenderer(),
+        structlog.processors.format_exc_info,
     ]
 
     structlog.configure(

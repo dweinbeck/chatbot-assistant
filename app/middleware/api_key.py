@@ -19,9 +19,7 @@ class ApiKeyMiddleware(BaseHTTPMiddleware):
     - All other routes must include a matching ``X-API-Key`` header.
     """
 
-    async def dispatch(
-        self, request: Request, call_next: RequestResponseEndpoint
-    ) -> Response:
+    async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
         if not settings.api_key:
             return await call_next(request)
 
@@ -31,8 +29,6 @@ class ApiKeyMiddleware(BaseHTTPMiddleware):
 
         provided = request.headers.get("X-API-Key")
         if not provided or provided != settings.api_key:
-            return JSONResponse(
-                status_code=401, content={"detail": "Invalid or missing API key"}
-            )
+            return JSONResponse(status_code=401, content={"detail": "Invalid or missing API key"})
 
         return await call_next(request)

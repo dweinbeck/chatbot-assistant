@@ -29,9 +29,7 @@ async def get_or_create_repo(
         return repo
 
     # Check by owner+name in case the repo exists with a different ID
-    result = await session.execute(
-        select(Repo).where(Repo.owner == owner, Repo.name == name)
-    )
+    result = await session.execute(select(Repo).where(Repo.owner == owner, Repo.name == name))
     repo = result.scalar_one_or_none()
     if repo is not None:
         return repo

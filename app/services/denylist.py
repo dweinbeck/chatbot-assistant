@@ -13,6 +13,8 @@ DENYLIST_DIRS: list[str] = [
     "dist/",
     "build/",
     ".git/",
+    ".planning/",
+    ".gsd/",
     "vendor/",
     "__pycache__/",
     ".tox/",

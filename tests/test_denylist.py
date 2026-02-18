@@ -20,6 +20,8 @@ class TestDenylistDirs:
             ".tox/py312/lib/site.py",
             ".venv/bin/activate",
             ".mypy_cache/3.12/app.json",
+            ".planning/research/SUMMARY.md",
+            ".gsd/checkpoint.json",
         ],
     )
     def test_denied_directories(self, path: str) -> None:
